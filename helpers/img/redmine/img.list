@@ -1,0 +1,11 @@
+databases/mysql55-server
+devel/subversion
+devel/git
+databases/rubygem-mysql2
+databases/rubygem-activerecord-mysql-adapter
+databases/rubygem-mysql
+www/apache24
+devel/ruby-gems
+devel/rubygem-rake
+sysutils/rubygem-bundler
+www/redmine

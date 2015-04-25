@@ -1,0 +1,4 @@
+if [ -f "/root/etc/pg_hba.conf" -a -d /usr/local/pgsql/data ]; then
+	MYIPS=$( /sbin/ifconfig | /usr/bin/awk '/inet / { print $2}' | head -n 1 )
+	/usr/bin/sed -Ees:%%CBSD_IP%%:"${MYIPS}":g /root/etc/pg_hba.conf > /usr/local/pgsql/data/pg_hba.conf
+fi

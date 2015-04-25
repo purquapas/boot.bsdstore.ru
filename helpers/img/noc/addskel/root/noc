@@ -1,0 +1,57 @@
+#!/bin/sh
+
+# PROVIDE: noc
+# REQUIRE: DAEMON ldconfig mongod postgresql
+# KEYWORD: shutdown
+
+#
+# Add the following lines to /etc/rc.conf to enable noc:
+#  noc_enable (bool):    Set to "NO" by default.
+#                        Set it to "YES" to enable noc.
+#
+
+. /etc/rc.subr
+
+name="noc"
+rcvar=`set_rcvar`
+
+# set defaults
+load_rc_config $name
+
+: ${noc_enable="NO"}
+: ${noc_config="/usr/local/noc/etc/noc-launcher.conf"}
+: ${noc_flags="-c ${noc_config}"}
+
+export PATH=$PATH:/usr/local/bin
+
+noc_chdir=/usr/local/noc
+command=${noc_chdir}/scripts/noc-launcher.py
+command_interpreter=/usr/local/bin/python
+pidfile=/var/run/noc/noc-launcher.pid
+required_files=${noc_config}
+
+restart_cmd=${name}_reload
+start_cmd=${name}_start
+stop_cmd=${name}_stop
+
+noc_start()
+{
+	cd ${noc_chdir} && ${command} -c /usr/local/noc/etc/noc-launcher.conf start
+}
+
+noc_stop()
+{
+	cd ${noc_chdir} && ${command} -c /usr/local/noc/etc/noc-launcher.conf stop
+}
+
+noc_restart()
+{
+	command_args="stop"
+	run_rc_command "stop"
+	command_args="start"
+	run_rc_command "start"
+	exit 0
+}
+
+
+run_rc_command "$1"

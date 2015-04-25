@@ -1,0 +1,112 @@
+#!/bin/sh
+##----------------------------------------------------------------------
+## FreeBSD 9.1 bootstrap0.sh
+## Initialize system and install all prerequisites to NOC
+##----------------------------------------------------------------------
+## Copyright (C) 2007-2013 The NOC Project
+## See LICENSE for details
+##----------------------------------------------------------------------
+
+##
+## Helper functions definitions
+##
+PROGNAME=`basename $0`
+PREFIX=/usr/local
+
+error_exit ( ) {
+	echo "$PROGNAME: ${1:-'Unknown error'}" 1>&2
+	echo "Terminating" 1>&2
+	exit 1
+}
+
+info ( ) {
+	echo $1 1>&2
+}
+
+install_pkg ( ) {
+	info "Installing $1"
+	/usr/sbin/pkg install -y $1 || error_exit "Failed to install: $1"
+}
+
+## Check pkg is activated
+env ASSUME_ALWAYS_YES=yes /usr/sbin/pkg -y > /dev/null 2>&1
+##
+## Create NOC user and group
+##
+info "Create group 'noc'"
+grep -e ^noc: /etc/group
+if [ $? -ne 0 ]; then
+	pw groupadd -n noc
+fi
+info "Create user 'noc'"
+grep -e ^noc: /etc/passwd
+if [ $? -ne 0 ]; then
+	pw useradd -g noc -s /bin/sh -d /home/noc -n noc
+	echo "thenocproject" | /usr/sbin/pw usermod "noc" -h 0
+fi
+##
+## Install base packages
+##
+info "Installing system packages"
+install_pkg postgresql93-server
+install_pkg databases/postgis21
+install_pkg mongodb
+install_pkg py27-virtualenv
+install_pkg mercurial
+install_pkg gmp
+install_pkg libsmi
+install_pkg nginx
+
+ln -sf /usr/local/bin/python2 /usr/local/bin/python
+ln -sf /usr/local/share/postgresql/contrib/postgis-2.1 /usr/local/share/postgresql/contrib/postgis-2.0
+
+##
+## Set up daemon autostart
+##
+echo "# ======== Created by NOC ========" >> /etc/rc.conf
+echo 'postgresql_enable="YES"' >> /etc/rc.conf
+echo 'mongod_enable="YES"' >> /etc/rc.conf
+echo 'nginx_enable="YES"' >> /etc/rc.conf
+echo 'noc_enable="YES"' >> /etc/rc.conf
+##
+## Set up Postgresql database
+##
+info "Create PostgreSQL 'noc' user and database"
+/usr/local/etc/rc.d/postgresql initdb || error_exit "Cannot initialize PostgreSQL database"
+
+if [ -f "/root/etc/pg_hba.conf" -a -d /usr/local/pgsql/data ]; then
+	MYIPS=$( /sbin/ifconfig | /usr/bin/awk '/inet / { print $2}' | head -n 1 )
+	/usr/bin/sed -Ees:%%CBSD_IP%%:"${MYIPS}":g /root/etc/pg_hba.conf > /usr/local/pgsql/data/pg_hba.conf
+fi
+
+/usr/local/etc/rc.d/postgresql start || error_exit "Cannot start PostgreSQL database"
+su - pgsql -c "psql postgres" << __EOF__
+CREATE USER noc SUPERUSER ENCRYPTED PASSWORD 'thenocproject';
+CREATE DATABASE noc WITH OWNER=noc ENCODING='UTF8';
+__EOF__
+[ $? -eq 0 ] || error_exit "Failed to initialize PostgreSQL database and user"
+##
+## Set up mongodb user
+##
+info "Launching MongoDB database"
+/usr/local/etc/rc.d/mongod start || error_exit "Cannot start MongoDB database"
+info "Setting MongoDB authentication"
+mongo noc << __EOF__
+db.addUser("noc", "thenocproject")
+__EOF__
+
+##
+## Get NOC
+##
+cd $PREFIX || error_exit "cd $PREFIX failed"
+info "Fetching NOC"
+hg clone https://bitbucket.org/nocproject/noc noc || error_exit "Unable to pull NOC distribution"
+
+cp -a /root/bootstrap.sh /usr/local/noc/share/vagrant/x86_64/FreeBSD/9.1/bootstrap.sh
+cp -a /root/noc /usr/local/noc/share/FreeBSD/rc.d/noc
+
+if [ "$1" != "--no-bootstrap" ]; then
+	info "Running bootstrap.sh"
+	sh $PREFIX/noc/share/vagrant/x86_64/FreeBSD/9.1/bootstrap.sh
+fi
+

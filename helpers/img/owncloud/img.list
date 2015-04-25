@@ -1,0 +1,10 @@
+databases/mariadb55-client
+www/apache24
+lang/php5
+www/pecl-zendopcache
+ftp/php5-ftp
+www/mod_php5
+graphics/pecl-imagick
+net/samba-smbclient
+multimedia/ffmpeg
+www/owncloud

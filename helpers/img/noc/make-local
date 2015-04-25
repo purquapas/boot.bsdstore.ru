@@ -1,0 +1,11 @@
+#!/bin/sh
+
+echo "LOCAL FOR NOC"
+
+cbsd jstart noc
+cbsd jexec jname=noc /bin/sh /root/FreeBSD-9.2.txt
+cbsd jstop noc
+[ -d /usr/jails/jails-data/noc-data/var/cache/pkg ] && /bin/rm -f /usr/jails/jails-data/noc-data/var/cache/pkg/*
+[ -f /usr/jails/jails-data/noc-data/root/FreeBSD-9.2.txt ] && /bin/rm -f /usr/jails/jails-data/noc-data/root/FreeBSD-9.2.txt
+[ -f /usr/jails/jails-data/noc-data/root/bootstrap.sh ] && /bin/rm -f /usr/jails/jails-data/noc-data/root/bootstrap.sh
+[ -f /usr/jails/jails-data/noc-data/root/noc ] && /bin/rm -f /usr/jails/jails-data/noc-data/root/noc
